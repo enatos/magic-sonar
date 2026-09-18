@@ -1,0 +1,28 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+*.key
+*.token
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.pytest_cache/
+
+# Data & Logs
+logs/
+*.log
+data/*.db
+data/backup/
+
+# Build artifacts
+dist/
+
+# OS files
+.DS_Store
+Thumbs.db

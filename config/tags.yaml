@@ -1,0 +1,88 @@
+# なんとかソナー 設定ファイル
+# タグや重み、検索条件はここを編集するだけで反映されます（コード修正不要）
+
+# 関心タグ設定 (重み: 重点=2.0, 通常=1.0, 休眠=0.0)
+tags:
+  - id: memory_context
+    name: "記憶 / AIコンテキスト"
+    status: "重点"
+    weight: 2.0
+    keywords:
+      - "agent memory"
+      - "context management"
+      - "context window"
+      - "long-term memory"
+      - "scratchpad agent"
+
+  - id: knowledge
+    name: "ナレッジ"
+    status: "通常"
+    weight: 1.0
+    keywords:
+      - "knowledge graph"
+      - "knowledge base"
+      - "pkm"
+      - "second brain"
+
+  - id: harness
+    name: "ハーネス"
+    status: "重点"
+    weight: 2.0
+    keywords:
+      - "agent harness"
+      - "evaluation harness"
+      - "agent evaluation"
+      - "agent sandbox"
+
+  - id: loop
+    name: "ループ"
+    status: "通常"
+    weight: 1.0
+    keywords:
+      - "agent loop"
+      - "autonomous loop"
+      - "feedback loop"
+      - "ralph"
+
+  - id: semantic_graph
+    name: "意味グラフ"
+    status: "通常"
+    weight: 1.0
+    keywords:
+      - "semantic graph"
+      - "concept graph"
+      - "ontology graph"
+
+  - id: execution_graph
+    name: "実行グラフ"
+    status: "通常"
+    weight: 1.0
+    keywords:
+      - "execution graph"
+      - "dag execution"
+      - "computation graph"
+      - "workflow graph"
+
+  - id: personal_publishing
+    name: "個人の情報発信"
+    status: "通常"
+    weight: 1.0
+    keywords:
+      - "digital garden"
+      - "static site generator"
+      - "microblog"
+      - "personal publishing"
+
+# 未知枠（急浮上）の探索設定
+unknown_frontier:
+  enabled: true
+  min_star_velocity: 20.0     # 未知枠としてNotionに送る最低日速（stars/day）
+  created_within_days: 30     # 直近何日以内に作成されたrepoを対象にするか
+  min_stars_for_discovery: 50 # 観測プールに入れるための最低Star総数
+
+# 運用制約・リミット設定
+limits:
+  max_pool_size: 200          # 観測プール（DB）の最大保持件数
+  max_daily_notion_items: 5   # 1日のNotion新規登録上限（最大キャップ）
+  inactivity_days_threshold: 7 # 観測開始から何日後に休眠判定を行うか
+  inactive_velocity_threshold: 1.0 # 7日日速がこれ未満なら休眠化（stars/day）
