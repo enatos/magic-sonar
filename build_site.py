@@ -201,7 +201,112 @@ CLIENT_JS = """
 """
 
 
-def render_html(items: list, generated_at_iso: str) -> str:
+def generate_table_rows_html(client_data: list) -> str:
+    """Generate initial HTML table rows for SSR/static rendering."""
+    rows = []
+    for idx, item in enumerate(client_data):
+        v_val = item.get("velocity")
+        v_str = f"+{v_val:.1f}/日" if v_val is not None else "計測待ち"
+        v_type = item.get("velocity_type", "計測待ち")
+        v_class = "v-type-confirmed" if "確定" in v_type else "v-type-provisional"
+
+        tag_pills = " ".join([f'<span class="item-tag">{html.escape(t)}</span>' for t in item.get("tags", [])])
+        lang = item.get("language")
+        lang_pill = f'<span class="lang-badge">● {html.escape(lang)}</span>' if lang else ""
+
+        repo_name = html.escape(item.get("repo", ""))
+        repo_url = html.escape(item.get("url", ""))
+        desc = html.escape(item.get("description", ""))
+        stars = item.get("current_stars", 0)
+        spark = item.get("sparkline", "")
+        obs_days = item.get("observed_days", 0)
+
+        row = f"""        <tr>
+          <td style="color:var(--text-muted);font-size:12px;">{idx + 1}</td>
+          <td class="repo-cell">
+            <div class="repo-name"><a href="{repo_url}" target="_blank" rel="noopener noreferrer">{repo_name}</a></div>
+            <div class="repo-desc">{lang_pill}{desc}</div>
+          </td>
+          <td class="velocity-cell">
+            <span class="velocity-pill">{v_str}</span>
+            <span class="v-type-badge {v_class}">{html.escape(v_type)}</span>
+          </td>
+          <td class="stars-num">⭐ {stars:,}</td>
+          <td>{spark}</td>
+          <td style="color:var(--text-muted);font-variant-numeric:tabular-nums;">{obs_days:.1f}日</td>
+          <td><div class="item-tags">{tag_pills}</div></td>
+        </tr>"""
+        rows.append(row)
+    return "\n".join(rows)
+
+
+def generate_markdown(items: list, generated_at_iso: str) -> str:
+    """Generate clean Markdown documentation for AI/LLMs."""
+    lines = [
+        "# なんとかソナー 📡 GitHub トレンド・日速観測データ",
+        "",
+        f"> 最終更新: {generated_at_iso[:19]}Z | 観測数: {len(items)} | データ正本: sonar.jsonl",
+        "",
+        "## ⚡️ 急上昇ランキング (TOP 5)",
+        "",
+        "| 順位 | リポジトリ | 日速 | Star数 | 観測日数 | 言語 | タグ | 説明 |",
+        "|:---:|---|:---:|:---:|:---:|:---:|---|---|",
+    ]
+
+    top5 = [it for it in items if it.get("velocity") is not None][:5]
+    for i, it in enumerate(top5, 1):
+        repo = it.get("repo", "")
+        url = it.get("url", f"https://github.com/{repo}")
+        v = f"+{it.get('velocity', 0):.1f}/日 ({it.get('velocity_type', '')})"
+        stars = f"{it.get('current_stars', 0):,}"
+        days = f"{it.get('observed_days', 0):.1f}日"
+        lang = it.get("language") or "-"
+        tags = ", ".join(it.get("tags", [])) or "-"
+        desc = (it.get("description") or "-").replace("\n", " ").replace("|", "\\|")
+        lines.append(f"| #{i} | [{repo}]({url}) | {v} | ⭐ {stars} | {days} | {lang} | {tags} | {desc} |")
+
+    lines.extend([
+        "",
+        "## 📋 全観測リポジトリ一覧",
+        "",
+        "| # | リポジトリ | 日速 | Star数 | 観測日数 | 言語 | タグ | 説明 |",
+        "|:---:|---|:---:|:---:|:---:|:---:|---|---|",
+    ])
+
+    for idx, it in enumerate(items, 1):
+        repo = it.get("repo", "")
+        url = it.get("url", f"https://github.com/{repo}")
+        v_val = it.get("velocity")
+        v = f"+{v_val:.1f}/日 ({it.get('velocity_type', '')})" if v_val is not None else "計測待ち"
+        stars = f"{it.get('current_stars', 0):,}"
+        days = f"{it.get('observed_days', 0):.1f}日"
+        lang = it.get("language") or "-"
+        tags = ", ".join(it.get("tags", [])) or "-"
+        desc = (it.get("description") or "-").replace("\n", " ").replace("|", "\\|")
+        lines.append(f"| {idx} | [{repo}]({url}) | {v} | ⭐ {stars} | {days} | {lang} | {tags} | {desc} |")
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def generate_llms_txt() -> str:
+    """Generate standard llms.txt guide for AI agents."""
+    return """# なんとかソナー 📡
+
+> AI・開発ツール・基盤技術の GitHub 新着観測＆Star日速分析ダッシュボード
+
+## 機械可読データ
+- [観測データ (Markdown)](https://sonar-5ji.pages.dev/sonar.md): 全観測リポジトリの一覧表（LLM/AIが最も読みやすいフォーマット）
+- [観測データ (JSON)](https://sonar-5ji.pages.dev/sonar.json): 全観測リポジトリの完全な構造化データ（API連携用）
+- [Webダッシュボード](https://sonar-5ji.pages.dev/): 人間向けインタラクティブUI（静的テーブル＆ランキング）
+
+## 概要
+GitHub 上の注目リポジトリを継続観測し、Starの増加ペース（日速 = stars/day）を追跡・可視化しています。
+日速は7日間の推移から算出される「確定(7日)」と、観測開始直後の「暫定」に分類されます。
+"""
+
+
+def render_html(items: list, generated_at_iso: str) -> tuple:
     total_count = len(items)
     tags_set = set()
     total_stars = 0
@@ -239,6 +344,7 @@ def render_html(items: list, generated_at_iso: str) -> str:
         )
 
     client_data_json = json.dumps(client_data, ensure_ascii=False)
+    initial_table_rows = generate_table_rows_html(client_data)
 
     top_cards_html = []
     for i, it in enumerate(top_velocity_items, 1):
@@ -286,6 +392,8 @@ def render_html(items: list, generated_at_iso: str) -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>なんとかソナー 📡 | GitHub トレンド・日速観測</title>
   <meta name="description" content="AI・開発ツールの新着リポジトリとStar日速ペースを観測するなんとかソナーの公開ダッシュボード">
+  <link rel="alternate" type="application/json" href="/sonar.json" title="なんとかソナー JSON データ">
+  <link rel="alternate" type="text/markdown" href="/sonar.md" title="なんとかソナー Markdown データ">
   <style>
     :root {{
       --bg: #0d1117;
@@ -377,6 +485,31 @@ def render_html(items: list, generated_at_iso: str) -> str:
       color: var(--text-muted);
       font-size: 14px;
       margin-top: 4px;
+    }}
+
+    .header-actions {{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }}
+
+    .data-link-btn {{
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 6px 11px;
+      border-radius: 6px;
+      font-size: 13px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }}
+    .data-link-btn:hover {{
+      border-color: var(--accent);
+      color: var(--accent);
     }}
 
     .theme-toggle {{
@@ -733,6 +866,8 @@ def render_html(items: list, generated_at_iso: str) -> str:
         <p>AI・開発ツール・基盤技術の GitHub 新着観測＆Star日速分析</p>
       </div>
       <div class="header-actions">
+        <a href="/sonar.md" class="data-link-btn" title="AI・エージェント向け Markdown データ">🤖 MD</a>
+        <a href="/sonar.json" class="data-link-btn" title="AI・エージェント向け JSON データ">📦 JSON</a>
         <button id="themeToggle" class="theme-toggle" aria-label="テーマ切替">🌓 表示切替</button>
       </div>
     </header>
@@ -790,16 +925,17 @@ def render_html(items: list, generated_at_iso: str) -> str:
         <table id="repoTable">
           <thead>
             <tr>
-              <th style="width:48px;">#</th>
-              <th>リポジトリ</th>
-              <th style="width:140px;">日速</th>
-              <th style="width:100px;">Star数</th>
-              <th style="width:90px;">推移</th>
-              <th style="width:90px;">観測日数</th>
-              <th>タグ</th>
+              <th scope="col" style="width:48px;">#</th>
+              <th scope="col">リポジトリ</th>
+              <th scope="col" style="width:140px;">日速</th>
+              <th scope="col" style="width:100px;">Star数</th>
+              <th scope="col" style="width:90px;">推移</th>
+              <th scope="col" style="width:90px;">観測日数</th>
+              <th scope="col">タグ</th>
             </tr>
           </thead>
           <tbody id="repoTableBody">
+{initial_table_rows}
           </tbody>
         </table>
         <div id="emptyState" class="empty-state" style="display:none;">
@@ -809,7 +945,7 @@ def render_html(items: list, generated_at_iso: str) -> str:
     </section>
 
     <footer>
-      <p>なんとかソナー 📡 観測正本: <code>sonar.jsonl</code> | Generated: {generated_at_iso[:19]}Z</p>
+      <p>なんとかソナー 📡 観測正本: <code>sonar.jsonl</code> | 🤖 AI用: <a href="/sonar.md">Markdown</a> · <a href="/sonar.json">JSON</a> · <a href="/llms.txt">llms.txt</a> | Generated: {generated_at_iso[:19]}Z</p>
     </footer>
   </div>
 
@@ -822,7 +958,7 @@ def render_html(items: list, generated_at_iso: str) -> str:
   </script>
 </body>
 </html>
-"""
+""", client_data
 
 
 def main():
@@ -835,11 +971,20 @@ def main():
         return
 
     now_iso = datetime.now(timezone.utc).isoformat()
-    html_content = render_html(items, now_iso)
+    html_content, client_data = render_html(items, now_iso)
+    markdown_content = generate_markdown(items, now_iso)
+    llms_txt_content = generate_llms_txt()
 
     DIST_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_HTML.write_text(html_content, encoding="utf-8")
+    (DIST_DIR / "sonar.json").write_text(json.dumps(client_data, ensure_ascii=False, indent=2), encoding="utf-8")
+    (DIST_DIR / "sonar.md").write_text(markdown_content, encoding="utf-8")
+    (DIST_DIR / "llms.txt").write_text(llms_txt_content, encoding="utf-8")
+
     print(f"Successfully generated {OUTPUT_HTML} ({len(html_content)} bytes).")
+    print(f"Successfully generated {DIST_DIR / 'sonar.json'} ({len(client_data)} items).")
+    print(f"Successfully generated {DIST_DIR / 'sonar.md'} ({len(markdown_content)} bytes).")
+    print(f"Successfully generated {DIST_DIR / 'llms.txt'} ({len(llms_txt_content)} bytes).")
 
 
 if __name__ == "__main__":

@@ -22,6 +22,7 @@ data/backup/
 
 # Build artifacts
 dist/
+.wrangler/
 
 # OS files
 .DS_Store

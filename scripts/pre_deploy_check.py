@@ -9,13 +9,23 @@ import sys
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-DIST_HTML = ROOT_DIR / "dist" / "index.html"
+DIST_DIR = ROOT_DIR / "dist"
 
-if not DIST_HTML.exists():
-    print(f"Error: {DIST_HTML} does not exist. Run build_site.py first.", file=sys.stderr)
+if not DIST_DIR.exists():
+    print(f"Error: {DIST_DIR} does not exist. Run build_site.py first.", file=sys.stderr)
     sys.exit(1)
 
-content = DIST_HTML.read_text(encoding="utf-8")
+dist_files = list(DIST_DIR.glob("*.*"))
+if not dist_files:
+    print(f"Error: No files found in {DIST_DIR}. Run build_site.py first.", file=sys.stderr)
+    sys.exit(1)
+
+content_parts = []
+for f in dist_files:
+    if f.suffix in [".html", ".json", ".md", ".txt"]:
+        content_parts.append(f.read_text(encoding="utf-8"))
+
+content = "\n".join(content_parts)
 
 checks = [
     ("GATE-api or polaris keywords", re.findall(r"(?:gate-api|polaris|pol_[a-zA-Z0-9_-]+)", content, re.IGNORECASE)),
