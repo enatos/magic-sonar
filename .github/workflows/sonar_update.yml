@@ -1,0 +1,81 @@
+name: Sonar Auto Update (Every 3 Days 06:00 JST)
+
+on:
+  schedule:
+    # 3日に1回、JST 06:00 (UTC 21:00 前日) に実行
+    # 21:00 UTC on days 1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31
+    - cron: '0 21 */3 * *'
+  workflow_dispatch: # 手動実行トリガー
+
+concurrency:
+  group: sonar-update
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  update-sonar:
+    name: Run Sonar Observation & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Set up Node.js for Cloudflare Wrangler
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run Sonar Pipeline (Collect GitHub & Calculate Velocity)
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          python -m src.cli run
+
+      - name: Build Static Site & Feeds
+        run: |
+          python build_site.py
+
+      - name: Run Pre-Deployment Security Check
+        run: |
+          python scripts/pre_deploy_check.py
+
+      - name: Deploy to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || 'aba4ac3abdccd69448f4d2ef251cae10' }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "Deploying to Cloudflare Pages (project: sonar)..."
+            npx wrangler pages deploy dist --project-name sonar --commit-dirty=true
+          else
+            echo "Notice: CLOUDFLARE_API_TOKEN is not set in secrets. Skipping Pages deployment."
+          fi
+
+      - name: Commit and Push Updated Data & Site
+        run: |
+          git config user.name "カイ様"
+          git config user.email "kai@antigravity"
+          git add data/sonar.jsonl dist/
+          if git diff --staged --quiet; then
+            echo "No data changes detected. Skipping commit."
+          else
+            git commit -m "chore(sonar): 3日次自動更新（観測データ・静的サイト更新） [skip ci]"
+            git pull --rebase origin ${{ github.ref_name }} || true
+            git push origin HEAD:${{ github.ref_name }}
+          fi
