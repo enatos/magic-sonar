@@ -71,7 +71,7 @@ jobs:
         run: |
           git config user.name "カイ様"
           git config user.email "kai@antigravity"
-          git add data/sonar.jsonl dist/
+          git add data/sonar.jsonl
           if git diff --staged --quiet; then
             echo "No data changes detected. Skipping commit."
           else
