@@ -26,12 +26,16 @@ GitHub Actions ワークフロー（`.github/workflows/sonar_update.yml`）に�
 
 ## 3. 手動更新・デプロイ手順
 
-### (1) ローカルでのワンストップデプロイ
+### (1) Webダッシュボードからワンクリック手動実行（推奨）
+ダッシュボード（`https://sonar-5ji.pages.dev`）のヘッダー右上にある **「⚡️ 今すぐ更新」** ボタンをクリックすると、GitHub Actions のワークフロー実行画面が別タブで開きます。
+画面右上の **「Run workflow」**（Branch: `main`）を押すだけで、GitHub Actions 上で観測・ビルド・デプロイ・Gitコミットが完全自動で実行されます。
+
+### (2) ローカルでのワンストップデプロイ
 ```bash
 ./deploy.sh
 ```
 
-### (2) 手動での段階実行
+### (3) 手動での段階実行
 1. **観測 & データ更新**:
    ```bash
    ./.venv/bin/python -m src.cli run
