@@ -512,6 +512,15 @@ def render_html(items: list, generated_at_iso: str) -> tuple:
       color: var(--accent);
     }}
 
+    .data-link-btn.update-btn {{
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: 600;
+    }}
+    .data-link-btn.update-btn:hover {{
+      background: var(--accent-glow);
+    }}
+
     .theme-toggle {{
       background: var(--card-bg);
       border: 1px solid var(--card-border);
@@ -866,6 +875,7 @@ def render_html(items: list, generated_at_iso: str) -> tuple:
         <p>AI・開発ツール・基盤技術の GitHub 新着観測＆Star日速分析</p>
       </div>
       <div class="header-actions">
+        <a href="https://github.com/enatos/magic-sonar/actions/workflows/sonar_update.yml" target="_blank" rel="noopener noreferrer" class="data-link-btn update-btn" title="GitHub Actionsで今すぐ観測・更新を実行">⚡️ 今すぐ更新</a>
         <a href="/sonar.md" class="data-link-btn" title="AI・エージェント向け Markdown データ">🤖 MD</a>
         <a href="/sonar.json" class="data-link-btn" title="AI・エージェント向け JSON データ">📦 JSON</a>
         <button id="themeToggle" class="theme-toggle" aria-label="テーマ切替">🌓 表示切替</button>
