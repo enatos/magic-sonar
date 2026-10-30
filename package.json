@@ -6,6 +6,6 @@
     "node": "^24.22.1 || ^26.12.1"
   },
   "devDependencies": {
-    "wrangler": "4.151.3"
+    "wrangler": "4.153.0"
   }
 }
